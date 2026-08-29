@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Student · Class Assignment Platform</title>
+<link rel="stylesheet" href="../shared/css/styles.css" />
+<style>
+  /* mobile-first: sidebar collapses to a top bar on small screens (handled in shared css) */
+  .exam-shell{ max-width: 760px; }
+  .question-card{ margin-bottom: 20px; }
+  .option-row{
+    display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--line);
+    border-radius: var(--radius); margin-bottom:8px; cursor:pointer;
+  }
+  .option-row:hover{ background: var(--paper-dim); }
+  .option-row.selected{ border-color: var(--accent); background: var(--accent-soft); }
+  textarea.code-editor{
+    width:100%; min-height:220px; font-family: var(--font-mono); font-size:.86rem;
+    background:#1E2430; color:#E8E6DF; border-radius: var(--radius); padding:14px; border:none;
+  }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <nav class="sidebar" id="sidebar">
+    <div class="brand">Gradebook<small>Student</small></div>
+    <div class="nav-link" data-route="dashboard" onclick="Router.go('dashboard')">My Subjects</div>
+    <div class="nav-crumb">Account</div>
+    <div class="nav-link" onclick="Auth.logout()">Sign out</div>
+  </nav>
+  <main class="main">
+    <div class="topbar">
+      <div id="crumb"></div>
+      <div class="user-pill" id="userPill"></div>
+    </div>
+    <div id="outlet"></div>
+  </main>
+</div>
+
+<script src="../shared/js/api.js"></script>
+<script src="../shared/js/router.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

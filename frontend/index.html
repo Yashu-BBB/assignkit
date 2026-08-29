@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sign in · Class Assignment Platform</title>
+<link rel="stylesheet" href="shared/css/styles.css" />
+</head>
+<body>
+  <div class="login-shell">
+    <div class="card login-card">
+      <h1>Class Assignment Platform</h1>
+      <p style="color:var(--ink-soft); margin-top:-8px; margin-bottom:20px; font-size:.9rem;">
+        Sign in to continue.
+      </p>
+
+      <div class="role-tabs" id="roleTabs">
+        <div class="role-tab active" data-role="student">Student</div>
+        <div class="role-tab" data-role="lecturer">Lecturer</div>
+        <div class="role-tab" data-role="admin">Admin</div>
+      </div>
+
+      <div id="errorBanner"></div>
+
+      <form id="loginForm">
+        <div class="field">
+          <label id="idLabel">Register Number</label>
+          <input id="identifier" type="text" autocomplete="username" required />
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input id="password" type="password" autocomplete="current-password" required />
+        </div>
+        <button class="btn" type="submit" style="width:100%; justify-content:center;" id="submitBtn">
+          Sign in
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script src="shared/js/api.js"></script>
+  <script>
+    let selectedRole = "student";
+    const idLabels = { student: "Register Number", lecturer: "Lecturer ID", admin: "Username" };
+    const destinations = { student: "student/index.html", lecturer: "lecturer/index.html", admin: "admin/index.html" };
+
+    document.querySelectorAll(".role-tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".role-tab").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        selectedRole = tab.dataset.role;
+        document.getElementById("idLabel").textContent = idLabels[selectedRole];
+      });
+    });
+
+    if (Auth.isLoggedIn()) {
+      window.location.href = destinations[Auth.role()] || "student/index.html";
+    }
+
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const errorBanner = document.getElementById("errorBanner");
+      const submitBtn = document.getElementById("submitBtn");
+      errorBanner.innerHTML = "";
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Signing in…";
+
+      try {
+        const session = await Api.post("/auth/login", {
+          identifier: document.getElementById("identifier").value.trim(),
+          password: document.getElementById("password").value,
+          role: selectedRole,
+        });
+        Auth.save(session);
+        window.location.href = destinations[selectedRole];
+      } catch (err) {
+        errorBanner.innerHTML = `<div class="error-banner">${err.message || "Invalid credentials."}</div>`;
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Sign in";
+      }
+    });
+  </script>
+</body>
+</html>

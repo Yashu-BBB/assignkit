@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lecturer · Class Assignment Platform</title>
+<link rel="stylesheet" href="../shared/css/styles.css" />
+</head>
+<body>
+<div class="app-shell">
+  <nav class="sidebar">
+    <div class="brand">Gradebook<small>Lecturer</small></div>
+    <div class="nav-link" data-route="semesters" onclick="Router.go('semesters')">Semester → Section → Subject</div>
+    <div class="nav-crumb">Account</div>
+    <div class="nav-link" onclick="Router.go('profile')">My Profile</div>
+    <div class="nav-link" onclick="Auth.logout()">Sign out</div>
+  </nav>
+  <main class="main">
+    <div class="topbar">
+      <div id="crumb"></div>
+      <div class="user-pill" id="userPill"></div>
+    </div>
+    <div id="outlet"></div>
+  </main>
+</div>
+
+<script src="../shared/js/api.js"></script>
+<script src="../shared/js/router.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
