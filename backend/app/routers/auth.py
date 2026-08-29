@@ -36,7 +36,7 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
     if role != "admin" and not user.get("is_active", True):
         raise UnauthorizedError("This account has been deactivated.", code="account_inactive")
 
-    token = create_access_token(subject=user["id"], role=role)
+    token = create_access_token(subject=str(user["id"]), role=role)
     logger.info("login_success", extra={"role": role, "user_id": user["id"]})
     return TokenResponse(
         access_token=token, role=role, id=str(user["id"]), full_name=user.get("full_name", "Admin")

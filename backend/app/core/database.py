@@ -20,6 +20,12 @@ engine = create_async_engine(
     pool_size=10,
     max_overflow=10,
     echo=settings.DEBUG,
+    # Supabase's pooled connection (the "Transaction pooler", port 6543) does
+    # not support asyncpg's server-side prepared statement caching — it
+    # causes "DuplicatePreparedStatementError" under any concurrent load.
+    # Disabling the cache is the standard fix when using PgBouncer in
+    # transaction/statement pooling mode.
+    connect_args={"statement_cache_size": 0},
 )
 
 AsyncSessionLocal = async_sessionmaker(
