@@ -1,5 +1,5 @@
 if (!Auth.isLoggedIn() || Auth.role() !== "admin") {
-  window.location.href = "../index.html";
+  window.location.href = "login.html";
 }
 document.getElementById("userPill").textContent = Auth.name();
 

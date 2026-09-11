@@ -26,16 +26,90 @@ async function renderSemesters(_, outlet) {
   outlet.innerHTML = loadingBlock();
   try {
     const semesters = await Api.get("/lecturer/semesters");
+    const createButton = `<button class="btn" onclick="Router.go('create-subject')" style="margin-bottom:18px;">+ Create a New Subject</button>`;
     if (!semesters.length) {
-      outlet.innerHTML = `<div class="empty-state"><h3>No subjects assigned yet</h3>
-        <p>Once your admin adds you to a subject, its semester will appear here.</p></div>`;
+      outlet.innerHTML = createButton + `<div class="empty-state"><h3>No subjects yet</h3>
+        <p>Create your first subject to get started — pick a semester and section, name it, and you're set.</p></div>`;
       return;
     }
-    outlet.innerHTML = `<div class="grid grid-3">` + semesters.map(s => `
+    outlet.innerHTML = createButton + `<div class="grid grid-3">` + semesters.map(s => `
       <div class="card" style="cursor:pointer" onclick="Router.go('semester/${s.id}/sections')">
         <h3>${escapeHtml(s.name)}</h3>
       </div>`).join("") + `</div>`;
   } catch (err) { outlet.innerHTML = errorBlock(err); }
+}
+
+// ------------------------------------------------------- create a subject
+// Browses ALL semesters/sections (not just ones the lecturer already
+// teaches in) so they can set up their first subject, or add another one.
+let createSubjectState = { semesterId: null, sectionId: null };
+
+async function renderCreateSubject(_, outlet) {
+  setCrumb("Create a Subject");
+  createSubjectState = { semesterId: null, sectionId: null };
+  outlet.innerHTML = loadingBlock();
+  try {
+    const semesters = await Api.get("/lecturer/browse/semesters");
+    if (!semesters.length) {
+      outlet.innerHTML = `<div class="empty-state"><h3>No semesters yet</h3>
+        <p>Ask your admin to set up a semester and section first.</p></div>`;
+      return;
+    }
+    outlet.innerHTML = `
+      <div class="card">
+        <h3>1. Choose a semester</h3>
+        <div class="field">
+          <select id="cs_semester" onchange="onCreateSubjectSemesterChange()">
+            <option value="">Select a semester…</option>
+            ${semesters.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join("")}
+          </select>
+        </div>
+      </div>
+      <div class="card" id="cs_sectionCard" style="display:none;">
+        <h3>2. Choose a section</h3>
+        <div class="field"><select id="cs_section" onchange="onCreateSubjectSectionChange()"></select></div>
+      </div>
+      <div class="card" id="cs_detailsCard" style="display:none;">
+        <h3>3. Name the subject</h3>
+        <div class="field"><label>Subject name</label><input id="cs_name" /></div>
+        <div class="field"><label>Description (optional)</label><input id="cs_desc" /></div>
+        <button class="btn" onclick="submitCreateSubject()">Create Subject</button>
+      </div>`;
+  } catch (err) { outlet.innerHTML = errorBlock(err); }
+}
+
+async function onCreateSubjectSemesterChange() {
+  const semesterId = document.getElementById("cs_semester").value;
+  createSubjectState.semesterId = semesterId || null;
+  const sectionCard = document.getElementById("cs_sectionCard");
+  const detailsCard = document.getElementById("cs_detailsCard");
+  detailsCard.style.display = "none";
+  if (!semesterId) { sectionCard.style.display = "none"; return; }
+
+  const sections = await Api.get(`/lecturer/browse/semesters/${semesterId}/sections`);
+  const sectionSelect = document.getElementById("cs_section");
+  sectionSelect.innerHTML = `<option value="">Select a section…</option>` +
+    sections.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join("");
+  sectionCard.style.display = "block";
+}
+
+function onCreateSubjectSectionChange() {
+  const sectionId = document.getElementById("cs_section").value;
+  createSubjectState.sectionId = sectionId || null;
+  document.getElementById("cs_detailsCard").style.display = sectionId ? "block" : "none";
+}
+
+async function submitCreateSubject() {
+  const name = document.getElementById("cs_name").value.trim();
+  if (!name) return alert("Subject name is required.");
+  if (!createSubjectState.sectionId) return alert("Choose a section first.");
+  try {
+    const subject = await Api.post("/lecturer/subjects", {
+      section_id: createSubjectState.sectionId, name,
+      description: document.getElementById("cs_desc").value.trim() || null,
+    });
+    Router.go(`subject/${subject.id}`);
+  } catch (err) { alert(err.message); }
 }
 
 async function renderSections({ semId }, outlet) {
@@ -361,6 +435,7 @@ async function saveProfile() {
 
 // ------------------------------------------------------------------ router
 Router.register("semesters", renderSemesters);
+Router.register("create-subject", renderCreateSubject);
 Router.register("semester/:semId/sections", renderSections);
 Router.register("section/:secId/subjects", renderSubjects);
 Router.register("subject/:subjectId", renderSubjectOverview);

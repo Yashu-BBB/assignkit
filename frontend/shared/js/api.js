@@ -24,8 +24,9 @@ const Auth = {
   name() { return localStorage.getItem(this.NAME_KEY); },
   isLoggedIn() { return !!this.token(); },
   logout() {
+    const wasAdmin = this.role() === "admin";
     [this.TOKEN_KEY, this.ROLE_KEY, this.ID_KEY, this.NAME_KEY].forEach(k => localStorage.removeItem(k));
-    window.location.href = "/index.html";
+    window.location.href = wasAdmin ? "/admin/login.html" : "/index.html";
   },
 };
 

@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.cache import cache_get, cache_set
+from app.core.cache import cache_get, cache_invalidate_prefix, cache_set
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.deps import CurrentUser, require_student
@@ -62,7 +62,16 @@ async def subject_assignments(subject_id: str, db: AsyncSession = Depends(get_db
     if not membership:
         raise ForbiddenError("You are not enrolled in this subject.")
 
-    return await fetch_all(
+    # Short TTL: this list includes the student's own live attempt status
+    # (not_started/in_progress/submitted), so it can't be cached as long as
+    # static lists — 15s keeps repeated page loads cheap without showing a
+    # stale status right after the student submits something.
+    cache_key = f"student:{user.id}:subject:{subject_id}:assignments"
+    cached = await cache_get(cache_key)
+    if cached is not None:
+        return cached
+
+    rows = await fetch_all(
         db,
         """select a.id, a.title, a.mode, a.status, a.start_at, a.deadline_at,
                   coalesce(sai.status, 'not_started') as my_status
@@ -73,6 +82,8 @@ async def subject_assignments(subject_id: str, db: AsyncSession = Depends(get_db
            order by a.start_at desc""",
         {"sub": subject_id, "sid": user.id},
     )
+    await cache_set(cache_key, rows, ttl=15)
+    return rows
 
 
 @router.post("/assignments/{assignment_id}/start")
@@ -116,6 +127,7 @@ async def start_assignment(assignment_id: str, db: AsyncSession = Depends(get_db
                 {"iid": instance["id"], "qid": qid, "pos": pos, "timer": timer},
             )
         await db.commit()
+        await cache_invalidate_prefix(f"student:{user.id}:subject:{assignment['subject_id']}:assignments")
 
     return await _build_attempt_view(db, instance["id"])
 
@@ -331,6 +343,9 @@ async def submit_assignment(assignment_id: str, db: AsyncSession = Depends(get_d
          "time": time_taken},
     )
     await db.commit()
+    subject_row = await fetch_one(db, "select subject_id from assignments where id = :id", {"id": assignment_id})
+    if subject_row:
+        await cache_invalidate_prefix(f"student:{user.id}:subject:{subject_row['subject_id']}:assignments")
     logger.info("assignment_submitted", extra={"student_id": user.id, "assignment_id": assignment_id,
                                                  "score": total_score, "max": max_score})
     return {"total_score": total_score, "max_score": max_score}

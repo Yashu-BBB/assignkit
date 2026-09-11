@@ -43,6 +43,11 @@ class ForbiddenError(AppError):
     code = "forbidden"
 
 
+class TooManyRequestsError(AppError):
+    status_code = status.HTTP_429_TOO_MANY_REQUESTS
+    code = "too_many_requests"
+
+
 class ConflictError(AppError):
     status_code = status.HTTP_409_CONFLICT
     code = "conflict"

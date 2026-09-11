@@ -3,22 +3,16 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Sign in · Class Assignment Platform</title>
+<title>Sign in · AssignKit</title>
 <link rel="stylesheet" href="shared/css/styles.css" />
 </head>
 <body>
   <div class="login-shell">
     <div class="card login-card">
-      <h1>Class Assignment Platform</h1>
+      <h1 id="formTitle">Student Sign In</h1>
       <p style="color:var(--ink-soft); margin-top:-8px; margin-bottom:20px; font-size:.9rem;">
         Sign in to continue.
       </p>
-
-      <div class="role-tabs" id="roleTabs">
-        <div class="role-tab active" data-role="student">Student</div>
-        <div class="role-tab" data-role="lecturer">Lecturer</div>
-        <div class="role-tab" data-role="admin">Admin</div>
-      </div>
 
       <div id="errorBanner"></div>
 
@@ -35,27 +29,39 @@
           Sign in
         </button>
       </form>
+
+      <p style="text-align:center; margin-top:18px; font-size:.88rem;">
+        <a href="#" id="toggleRoleLink">Sign in as Lecturer instead</a>
+      </p>
+      <p style="text-align:center; margin-top:6px; font-size:.78rem;">
+        <a href="admin/login.html" style="color:var(--ink-soft);">Administrator sign in</a>
+      </p>
     </div>
   </div>
 
   <script src="shared/js/api.js"></script>
   <script>
     let selectedRole = "student";
-    const idLabels = { student: "Register Number", lecturer: "Lecturer ID", admin: "Username" };
-    const destinations = { student: "student/index.html", lecturer: "lecturer/index.html", admin: "admin/index.html" };
-
-    document.querySelectorAll(".role-tab").forEach(tab => {
-      tab.addEventListener("click", () => {
-        document.querySelectorAll(".role-tab").forEach(t => t.classList.remove("active"));
-        tab.classList.add("active");
-        selectedRole = tab.dataset.role;
-        document.getElementById("idLabel").textContent = idLabels[selectedRole];
-      });
-    });
+    const idLabels = { student: "Register Number", lecturer: "Lecturer ID" };
+    const titles = { student: "Student Sign In", lecturer: "Lecturer Sign In" };
+    const toggleLabels = { student: "Sign in as Lecturer instead", lecturer: "Sign in as Student instead" };
+    const destinations = { student: "student/index.html", lecturer: "lecturer/index.html" };
 
     if (Auth.isLoggedIn()) {
-      window.location.href = destinations[Auth.role()] || "student/index.html";
+      const dest = Auth.role() === "admin" ? "admin/index.html" : (destinations[Auth.role()] || "student/index.html");
+      window.location.href = dest;
     }
+
+    document.getElementById("toggleRoleLink").addEventListener("click", (e) => {
+      e.preventDefault();
+      selectedRole = selectedRole === "student" ? "lecturer" : "student";
+      document.getElementById("formTitle").textContent = titles[selectedRole];
+      document.getElementById("idLabel").textContent = idLabels[selectedRole];
+      document.getElementById("toggleRoleLink").textContent = toggleLabels[selectedRole];
+      document.getElementById("identifier").value = "";
+      document.getElementById("password").value = "";
+      document.getElementById("errorBanner").innerHTML = "";
+    });
 
     document.getElementById("loginForm").addEventListener("submit", async (e) => {
       e.preventDefault();
