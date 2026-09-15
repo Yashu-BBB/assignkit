@@ -1,4 +1,3 @@
-import json
 import logging
 from datetime import datetime, timezone
 
@@ -115,7 +114,10 @@ async def start_assignment(assignment_id: str, db: AsyncSession = Depends(get_db
             "update student_assignment_instances set status = 'in_progress', started_at = now() where id = :id",
             {"id": instance["id"]},
         )
-        question_ids = json.loads(instance["question_order"])
+        # question_order is a jsonb column; asyncpg/SQLAlchemy already
+        # deserializes it into a native Python list on select, so no
+        # json.loads() is needed (or possible) here.
+        question_ids = instance["question_order"]
         for pos, qid in enumerate(question_ids):
             q = await fetch_one(db, "select type from questions where id = :id", {"id": qid})
             timer = assignment["timer_seconds_default"] if q["type"] in ("mcq", "short_answer") else None

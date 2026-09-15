@@ -291,7 +291,10 @@ function addManualShortAnswer() {
   renderManualList();
 }
 function addManualCoding() {
-  manualQuestions.coding.push({ prompt: "", language: "python", expected_behavior: "", hidden_test_cases: [] });
+  manualQuestions.coding.push({
+    prompt: "", language: "python", expected_behavior: "", constraints: "",
+    sample_input: "", sample_output: "", hidden_test_cases: [],
+  });
   renderManualList();
 }
 
@@ -321,12 +324,45 @@ function renderManualList() {
     </div>`;
   });
   manualQuestions.coding.forEach((q, i) => {
+    const totalCases = (q.hidden_test_cases || []).length + (q.sample_input ? 1 : 0);
     html += `<div class="card">
       <strong>Coding ${i + 1}</strong>
       <div class="field"><textarea placeholder="Problem statement"
         onchange="manualQuestions.coding[${i}].prompt=this.value">${escapeHtml(q.prompt)}</textarea></div>
-      <div class="field"><textarea placeholder="Expected behavior / constraints"
+      <div class="field"><textarea placeholder="Expected behavior / constraints (shown to student)"
         onchange="manualQuestions.coding[${i}].expected_behavior=this.value">${escapeHtml(q.expected_behavior)}</textarea></div>
+      <div class="field-row">
+        <div class="field"><label>Language</label>
+          <select onchange="manualQuestions.coding[${i}].language=this.value">
+            <option value="python" ${q.language === "python" ? "selected" : ""}>Python</option>
+            <option value="java" ${q.language === "java" ? "selected" : ""}>Java</option>
+            <option value="javascript" ${q.language === "javascript" ? "selected" : ""}>JavaScript</option>
+          </select>
+        </div>
+        <div class="field"><label>Constraints (optional)</label>
+          <input value="${escapeHtml(q.constraints || "")}"
+            onchange="manualQuestions.coding[${i}].constraints=this.value" /></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Sample input (shown to student)</label>
+          <input value="${escapeHtml(q.sample_input || "")}"
+            onchange="manualQuestions.coding[${i}].sample_input=this.value" /></div>
+        <div class="field"><label>Sample expected output</label>
+          <input value="${escapeHtml(q.sample_output || "")}"
+            onchange="manualQuestions.coding[${i}].sample_output=this.value" /></div>
+      </div>
+      <label style="font-size:.85rem;">Hidden test cases (used for grading, not shown to student)</label>
+      ${(q.hidden_test_cases || []).map((tc, ti) => `<div class="field-row">
+        <input placeholder="Input" value="${escapeHtml(tc.input || "")}"
+          onchange="manualQuestions.coding[${i}].hidden_test_cases[${ti}].input=this.value" />
+        <input placeholder="Expected output" value="${escapeHtml(tc.expected_output || "")}"
+          onchange="manualQuestions.coding[${i}].hidden_test_cases[${ti}].expected_output=this.value" />
+        <button class="btn secondary" onclick="manualQuestions.coding[${i}].hidden_test_cases.splice(${ti},1); renderManualList();">Remove</button>
+      </div>`).join("")}
+      <button class="btn secondary" onclick="manualQuestions.coding[${i}].hidden_test_cases.push({input:'',expected_output:''}); renderManualList();">+ Hidden Test Case</button>
+      ${totalCases === 0
+        ? `<p style="color:var(--bad); font-size:.8rem; margin-top:6px;">⚠ No sample or hidden test cases yet — this question cannot be auto-graded until you add at least one.</p>`
+        : `<p style="color:var(--ink-soft); font-size:.8rem; margin-top:6px;">${totalCases} test case(s) will be used for grading.</p>`}
     </div>`;
   });
   el.innerHTML = html || `<p style="color:var(--ink-soft); font-size:.85rem;">No manual questions added yet.</p>`;
@@ -334,6 +370,15 @@ function renderManualList() {
 
 async function createAssignment(subjectId) {
   const mode = document.getElementById("a_mode").value;
+
+  const badCoding = manualQuestions.coding.findIndex(
+    q => (q.hidden_test_cases || []).length === 0 && !q.sample_input
+  );
+  if (badCoding !== -1) {
+    return alert(`Coding question ${badCoding + 1} has no sample or hidden test cases. ` +
+      `Add at least one test case so it can be auto-graded before creating the assignment.`);
+  }
+
   const payload = {
     subject_id: subjectId,
     title: document.getElementById("a_title").value.trim(),
@@ -380,7 +425,7 @@ async function renderAssignmentAnalytics({ assignmentId }, outlet) {
       <div class="card">
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <h3>Per-question breakdown</h3>
-          <a class="btn secondary" href="/api/archive/assignments/${assignmentId}.xlsx">Download Excel Archive</a>
+          <button class="btn secondary" onclick="downloadArchive('${assignmentId}')">Download Excel Archive</button>
         </div>
         <table><thead><tr><th>Type</th><th>Prompt</th><th>Correct</th><th>Attempts</th></tr></thead>
         <tbody>${data.per_question.map(q => `<tr><td>${q.type}</td><td>${escapeHtml((q.prompt||'').slice(0,60))}</td>
@@ -392,6 +437,32 @@ async function renderAssignmentAnalytics({ assignmentId }, outlet) {
           : `<p style="color:var(--ink-soft);">None reported.</p>`}
       </div>`;
   } catch (err) { outlet.innerHTML = errorBlock(err); }
+}
+
+async function downloadArchive(assignmentId) {
+  try {
+    const res = await fetch(`${API_BASE}/archive/assignments/${assignmentId}.xlsx`, {
+      headers: { Authorization: `Bearer ${Auth.token()}` },
+    });
+    if (!res.ok) {
+      if (res.status === 401) { Auth.logout(); return; }
+      throw new Error(`Download failed (status ${res.status}).`);
+    }
+    const blob = await res.blob();
+    const disposition = res.headers.get("Content-Disposition") || "";
+    const match = disposition.match(/filename="?([^"]+)"?/);
+    const filename = match ? match[1] : `assignment_${assignmentId}_results.xlsx`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    alert(err.message || "Download failed.");
+  }
 }
 
 // -------------------------------------------------------------- question bank

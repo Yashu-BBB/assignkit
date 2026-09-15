@@ -46,6 +46,10 @@ async def request_context_middleware(request: Request, call_next):
         request_id_ctx.reset(token)
     duration_ms = round((time.perf_counter() - start) * 1000, 1)
     response.headers["X-Request-ID"] = req_id
+    if request.url.path.startswith("/api/"):
+        # Defensive: /api/* responses are token-gated per-user data and must
+        # never be cached by a CDN/proxy (e.g. Railway's edge) or the browser.
+        response.headers["Cache-Control"] = "no-store"
     logger.info("request_completed", extra={
         "request_id": req_id, "method": request.method, "path": request.url.path,
         "status_code": response.status_code, "duration_ms": duration_ms,

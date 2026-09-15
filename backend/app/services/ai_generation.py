@@ -10,6 +10,7 @@ Design choices per spec:
    representation, not raw PDF text, once extraction is done.
  - AI must not introduce outside concepts / must stay close to source wording.
 """
+import asyncio
 import json
 import logging
 
@@ -38,6 +39,15 @@ def _get_model():
     return _model
 
 
+def _slim_knowledge(items: list[dict]) -> list[dict]:
+    """Strip DB-only fields (id, source_document_id, created_at, embedding_ref)
+    before embedding knowledge_items in a prompt. Raw rows carry a datetime
+    (created_at) and UUIDs, neither of which json.dumps can serialize — and
+    the model only needs the actual knowledge fields anyway."""
+    keep = ("topic", "concept", "definition", "examples", "key_terms", "code_patterns", "raw_excerpt")
+    return [{k: item.get(k) for k in keep} for item in items]
+
+
 async def _call_json(prompt: str, *, max_retries: int | None = None) -> dict | list:
     """Calls Gemini expecting a strict JSON response. Retries on failure/parse errors."""
     model = _get_model()
@@ -46,7 +56,12 @@ async def _call_json(prompt: str, *, max_retries: int | None = None) -> dict | l
 
     for attempt in range(1, attempts + 1):
         try:
-            response = model.generate_content(
+            # model.generate_content is a blocking (synchronous) network call from
+            # the Gemini SDK. Run it in a worker thread so it doesn't block the
+            # single event loop — otherwise every other request (from every user)
+            # stalls for the duration of each AI call.
+            response = await asyncio.to_thread(
+                model.generate_content,
                 prompt,
                 generation_config={"response_mime_type": "application/json"},
             )
@@ -93,7 +108,7 @@ async def generate_question_sets(
     Returns a list (per set) of lists of question dicts. Caller runs these
     through validate_question before publishing (spec section 9).
     """
-    knowledge_summary = json.dumps(knowledge_items[:80], ensure_ascii=False)  # compact, not raw PDF
+    knowledge_summary = json.dumps(_slim_knowledge(knowledge_items[:80]), ensure_ascii=False)  # compact, not raw PDF
 
     prompt = f"""Generate {num_sets} equivalent question sets for a class assessment, grounded ONLY
 in the knowledge map below. Do not introduce outside concepts. Keep terminology close to the
@@ -140,7 +155,7 @@ async def validate_question(question: dict, knowledge_items: list[dict]) -> dict
     appropriate terminology, valid objective, and (for coding) logical evaluability.
     Returns {"valid": bool, "notes": str, "corrected": dict | None}.
     """
-    knowledge_summary = json.dumps(knowledge_items[:40], ensure_ascii=False)
+    knowledge_summary = json.dumps(_slim_knowledge(knowledge_items[:40]), ensure_ascii=False)
     prompt = f"""Validate this generated question against the knowledge map. Check: it is grounded
 in the material, the answer/key is correct, the question type matches its content, difficulty is
 appropriate, there is no ambiguity, terminology matches the source material, and (if coding) the

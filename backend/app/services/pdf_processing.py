@@ -7,6 +7,8 @@ The original PDF stays in Supabase Storage; only the compact
 `extracted_knowledge` rows are re-used for AI generation, so we never
 resend the full PDF to the model on every request.
 """
+import asyncio
+import json
 import logging
 
 import fitz  # PyMuPDF
@@ -38,7 +40,9 @@ async def ingest_pdf(db: AsyncSession, subject_id: str, lecturer_id: str,
     if len(content) > settings.MAX_PDF_SIZE_MB * 1024 * 1024:
         raise PDFUnreadableError(f"PDF exceeds the {settings.MAX_PDF_SIZE_MB}MB limit.")
 
-    storage_path = storage_client.upload_pdf(subject_id, filename, content)
+    # upload_pdf is a synchronous network call (Supabase Storage) — run it in a
+    # thread so it doesn't block the event loop for every other user's request.
+    storage_path = await asyncio.to_thread(storage_client.upload_pdf, subject_id, filename, content)
     doc_row = await fetch_one(
         db,
         """insert into source_documents (subject_id, uploaded_by, storage_path, original_filename, status)
@@ -49,22 +53,26 @@ async def ingest_pdf(db: AsyncSession, subject_id: str, lecturer_id: str,
     doc_id = doc_row["id"]
 
     try:
-        pdf_doc = fitz.open(stream=content, filetype="pdf")
+        # fitz.open (PyMuPDF) parses the PDF synchronously; offload to a thread
+        # so a large upload doesn't block the event loop.
+        pdf_doc = await asyncio.to_thread(fitz.open, stream=content, filetype="pdf")
     except Exception as e:
         logger.error("pdf_open_failed", extra={"doc_id": doc_id, "error": str(e)})
         await execute(db, "update source_documents set status = 'failed' where id = :id", {"id": doc_id})
         raise PDFUnreadableError("The uploaded file could not be read as a PDF.")
 
-    score = _readability_score(pdf_doc)
+    # Readability scoring, text extraction, and OCR are all CPU-bound/synchronous
+    # (page.get_text(), pytesseract). Run them in a thread for the same reason.
+    score = await asyncio.to_thread(_readability_score, pdf_doc)
     page_count = pdf_doc.page_count
 
     if score >= 0.7:
         # Normal text PDF — extract directly.
-        raw_text = "\n".join(page.get_text() for page in pdf_doc)
+        raw_text = await asyncio.to_thread(lambda: "\n".join(page.get_text() for page in pdf_doc))
         method = "text_extraction"
     else:
         # Low native-text yield — attempt OCR.
-        raw_text, ocr_score = _run_ocr(pdf_doc)
+        raw_text, ocr_score = await asyncio.to_thread(_run_ocr, pdf_doc)
         score = max(score, ocr_score)
         method = "ocr"
 
@@ -101,8 +109,8 @@ async def ingest_pdf(db: AsyncSession, subject_id: str, lecturer_id: str,
                values (:doc, :topic, :concept, :definition, :examples, :terms, :patterns, :excerpt)""",
             {
                 "doc": doc_id, "topic": item.get("topic", ""), "concept": item.get("concept"),
-                "definition": item.get("definition"), "examples": item.get("examples", []),
-                "terms": item.get("key_terms", []), "patterns": item.get("code_patterns", []),
+                "definition": item.get("definition"), "examples": json.dumps(item.get("examples", [])),
+                "terms": json.dumps(item.get("key_terms", [])), "patterns": json.dumps(item.get("code_patterns", [])),
                 "excerpt": item.get("raw_excerpt", "")[:1000],
             },
         )

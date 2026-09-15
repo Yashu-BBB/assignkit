@@ -1,6 +1,8 @@
 import io
 import logging
 
+import asyncio
+
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from openpyxl import Workbook
@@ -41,20 +43,26 @@ async def export_assignment_results(assignment_id: str, db: AsyncSession = Depen
         {"aid": assignment_id},
     )
 
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Results"
-    headers = ["Register Number", "Name", "Score", "Max Score", "Percentage", "Time Taken (s)", "Computed At"]
-    ws.append(headers)
-    for r in rows:
-        ws.append([r["register_number"], r["full_name"], r["total_score"], r["max_score"],
-                   r["percentage"], r["time_taken_seconds"], str(r["computed_at"])])
-    for col in ws.columns:
-        ws.column_dimensions[col[0].column_letter].width = 18
+    def _build_workbook() -> io.BytesIO:
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Results"
+        headers = ["Register Number", "Name", "Score", "Max Score", "Percentage", "Time Taken (s)", "Computed At"]
+        ws.append(headers)
+        for r in rows:
+            ws.append([r["register_number"], r["full_name"], r["total_score"], r["max_score"],
+                       r["percentage"], r["time_taken_seconds"], str(r["computed_at"])])
+        for col in ws.columns:
+            ws.column_dimensions[col[0].column_letter].width = 18
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        return buf
 
-    buffer = io.BytesIO()
-    wb.save(buffer)
-    buffer.seek(0)
+    # openpyxl is synchronous; small exports are fine inline, but running it
+    # in a thread keeps a lecturer's large export from stalling other users'
+    # requests on this single-worker server.
+    buffer = await asyncio.to_thread(_build_workbook)
 
     logger.info("archive_generated", extra={"assignment_id": assignment_id, "rows": len(rows)})
     filename = f"{assignment['title'].replace(' ', '_')}_results.xlsx"

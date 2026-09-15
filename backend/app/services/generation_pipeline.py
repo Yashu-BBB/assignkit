@@ -229,7 +229,7 @@ async def _store_ai_question(db: AsyncSession, q: dict, *, lecturer_id: str, ass
             "lid": lecturer_id, "aid": assignment_id, "doc": source_document_id, "type": q["type"],
             "prompt": q["prompt"], "diff": q.get("difficulty", "medium"), "topic": q.get("topic"),
             "concept": q.get("concept"), "lo": q.get("learning_objective"),
-            "terms": q.get("key_terms", []), "lang": q.get("language"),
+            "terms": json.dumps(q.get("key_terms", [])), "lang": q.get("language"),
             "behavior": q.get("expected_behavior"), "constraints": q.get("constraints"),
         },
     )

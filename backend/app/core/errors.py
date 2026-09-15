@@ -89,10 +89,22 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(RequestValidationError)
     async def handle_validation_error(request: Request, exc: RequestValidationError):
+        # Pydantic v2 puts the raw exception object in ctx["error"] for any
+        # validator that raises ValueError (e.g. AssignmentCreate.counts_must_match).
+        # json.dumps can't serialize a raw exception, which was crashing this
+        # handler itself and hiding the real validation message behind a
+        # generic 500. Convert it to a string before returning it.
+        clean_errors = []
+        for err in exc.errors():
+            err = dict(err)
+            ctx = err.get("ctx")
+            if isinstance(ctx, dict) and "error" in ctx:
+                err["ctx"] = {**ctx, "error": str(ctx["error"])}
+            clean_errors.append(err)
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={"error": {"code": "validation_error", "message": "Invalid request data.",
-                                "fields": exc.errors()}},
+                                "fields": clean_errors}},
         )
 
     @app.exception_handler(Exception)

@@ -68,6 +68,14 @@ class AssignmentCreate(BaseModel):
                     or len(self.manual_short_answers) < self.short_answer_count
                     or len(self.manual_coding) < self.coding_count):
                 raise ValueError("Manual mode requires all questions to be supplied manually")
+        for i, code_q in enumerate(self.manual_coding, start=1):
+            has_sample = bool(code_q.sample_input) and bool(code_q.sample_output)
+            if not code_q.hidden_test_cases and not has_sample:
+                raise ValueError(
+                    f"Coding question {i} has no sample or hidden test cases — it cannot be "
+                    f"auto-graded. Add at least one test case (sample_input/sample_output or "
+                    f"a hidden_test_cases entry)."
+                )
         return self
 
 
