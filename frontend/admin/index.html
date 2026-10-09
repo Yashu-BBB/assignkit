@@ -3,32 +3,35 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Admin · Class Assignment Platform</title>
+<title>Admin · AssignKit</title>
 <link rel="stylesheet" href="../shared/css/styles.css" />
 </head>
 <body>
-<div class="app-shell">
-  <nav class="sidebar">
-    <div class="brand">Gradebook<small>Admin</small></div>
-    <div class="nav-link" data-route="overview" onclick="Router.go('overview')">System Overview</div>
-    <div class="nav-link" data-route="semesters" onclick="Router.go('semesters')">Semesters & Sections</div>
-    <div class="nav-link" data-route="lecturers" onclick="Router.go('lecturers')">Lecturers</div>
-    <div class="nav-link" data-route="students" onclick="Router.go('students')">Students</div>
-    <div class="nav-link" data-route="settings" onclick="Router.go('settings')">System Settings</div>
-    <div class="nav-crumb">Account</div>
-    <div class="nav-link" onclick="Auth.logout()">Sign out</div>
-  </nav>
-  <main class="main">
-    <div class="topbar">
-      <div id="crumb"></div>
-      <div class="user-pill" id="userPill"></div>
-    </div>
-    <div id="outlet"></div>
-  </main>
-</div>
+<header class="site-header">
+  <div class="bar">
+    <a class="wordmark" href="#">Assign<span>Kit</span></a>
+    <span class="role-tag">Admin</span>
+    <button class="menu-btn" id="menuBtn" type="button" aria-expanded="false" aria-controls="mainNav">Menu</button>
+    <nav class="main-nav" id="mainNav" aria-label="Main">
+      <a class="nav-link" data-route="overview" href="#overview">Overview</a>
+      <a class="nav-link" data-route="semesters" href="#semesters">Semesters</a>
+      <a class="nav-link" data-route="lecturers" href="#lecturers">Lecturers</a>
+      <a class="nav-link" data-route="students" href="#students">Students</a>
+      <a class="nav-link" data-route="settings" href="#settings">Settings</a>
+      <div class="who-mobile"><span id="userPillMobile"></span><button class="link-btn" type="button" onclick="Auth.logout()">Sign out</button></div>
+    </nav>
+    <div class="who"><span class="name" id="userPill"></span><button class="link-btn" type="button" onclick="Auth.logout()">Sign out</button></div>
+  </div>
+</header>
+<main class="page">
+  <div class="page-head" id="crumb"></div>
+  <div id="outlet"></div>
+</main>
 
 <script src="../shared/js/api.js"></script>
+<script src="../shared/js/ui.js"></script>
 <script src="../shared/js/router.js"></script>
+<script src="../shared/js/shell.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

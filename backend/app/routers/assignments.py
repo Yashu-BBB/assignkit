@@ -6,7 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.cache import cache_invalidate_prefix
 from app.core.database import get_db
 from app.core.deps import CurrentUser, require_lecturer
-from app.core.errors import ForbiddenError, NotFoundError
+from app.core.config import get_settings
+from app.core.errors import FeatureUnavailableError, ForbiddenError, NotFoundError
 from app.schemas.assignment import AssignmentCreate, AssignmentOut
 from app.services import generation_pipeline
 from app.utils.db_helpers import execute, fetch_all, fetch_one
@@ -28,6 +29,20 @@ async def create_assignment(
     db: AsyncSession = Depends(get_db), user: CurrentUser = Depends(require_lecturer),
 ):
     await _assert_owns_subject(db, payload.subject_id, user.id)
+
+    # Writing coding questions by hand is switched off (FEATURE_MANUAL_CODING).
+    # Enforced here as well as in the UI. AI-written coding questions in
+    # AI/hybrid mode are a separate path and stay available.
+    if not get_settings().FEATURE_MANUAL_CODING:
+        if payload.manual_coding:
+            raise FeatureUnavailableError(
+                "Writing coding questions manually is temporarily unavailable."
+            )
+        if payload.mode == "manual" and payload.coding_count > 0:
+            raise FeatureUnavailableError(
+                "Manual mode can't include coding questions right now. Set the coding count to 0, "
+                "or switch to Hybrid so the AI writes them."
+            )
 
     max_sets_row = await fetch_one(db, "select value from system_settings where key = 'max_sets_per_assignment'")
     max_sets = int(max_sets_row["value"]) if max_sets_row else 20

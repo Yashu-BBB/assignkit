@@ -6,7 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.cache import cache_get, cache_invalidate_prefix, cache_set
 from app.core.database import get_db
 from app.core.deps import CurrentUser, require_lecturer
-from app.core.errors import ForbiddenError, NotFoundError
+from app.core.config import get_settings
+from app.core.errors import FeatureUnavailableError, ForbiddenError, NotFoundError
 from app.schemas.academic import SubjectCreate, SubjectOut
 from app.services import pdf_processing
 from app.utils.db_helpers import execute, fetch_all, fetch_one
@@ -190,6 +191,10 @@ async def subject_students(subject_id: str, db: AsyncSession = Depends(get_db),
 @router.post("/subjects/{subject_id}/pdf")
 async def upload_pdf(subject_id: str, file: UploadFile = File(...),
                       db: AsyncSession = Depends(get_db), user: CurrentUser = Depends(require_lecturer)):
+    if not get_settings().FEATURE_PDF_UPLOAD:
+        raise FeatureUnavailableError(
+            "PDF upload is temporarily unavailable. You can still create assignments without class material."
+        )
     await _assert_owns_subject(db, subject_id, user.id)
     content = await file.read()
     doc = await pdf_processing.ingest_pdf(

@@ -3,68 +3,66 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Administrator Sign in · AssignKit</title>
+<title>Administrator sign in · AssignKit</title>
 <link rel="stylesheet" href="../shared/css/styles.css" />
 </head>
 <body>
-  <div class="login-shell">
-    <div class="card login-card">
-      <h1>Administrator Sign In</h1>
-      <p style="color:var(--ink-soft); margin-top:-8px; margin-bottom:20px; font-size:.9rem;">
-        Restricted access.
-      </p>
+<div class="signin">
+  <section class="signin-intro" aria-label="About this page">
+    <div><a class="wordmark" href="../index.html">Assign<span>Kit</span></a></div>
+    <div>
+      <h1>Administrator access.</h1>
+      <p>Semesters, sections, lecturer and student accounts, and system settings live here. If you're a student or lecturer, you want the other sign-in.</p>
+    </div>
+    <div class="foot">Restricted area</div>
+  </section>
 
-      <div id="errorBanner"></div>
-
-      <form id="loginForm">
+  <section class="signin-form">
+    <div class="signin-box">
+      <h2>Administrator sign in</h2>
+      <div id="errorBanner" aria-live="polite"></div>
+      <form id="loginForm" novalidate>
         <div class="field">
-          <label>Username</label>
-          <input id="identifier" type="text" autocomplete="username" required />
+          <label for="identifier">Username</label>
+          <input id="identifier" type="text" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" required />
         </div>
         <div class="field">
-          <label>Password</label>
+          <label for="password">Password</label>
           <input id="password" type="password" autocomplete="current-password" required />
         </div>
-        <button class="btn" type="submit" style="width:100%; justify-content:center;" id="submitBtn">
-          Sign in
-        </button>
+        <button class="btn block" type="submit" id="submitBtn">Sign in</button>
       </form>
-
-      <p style="text-align:center; margin-top:18px; font-size:.85rem;">
-        <a href="../index.html" style="color:var(--ink-soft);">← Back to student/lecturer sign in</a>
-      </p>
+      <p class="small" style="margin-top:22px;"><a href="../index.html">← Student and lecturer sign in</a></p>
     </div>
-  </div>
+  </section>
+</div>
 
-  <script src="../shared/js/api.js"></script>
-  <script>
-    if (Auth.isLoggedIn() && Auth.role() === "admin") {
+<script src="../shared/js/api.js"></script>
+<script src="../shared/js/ui.js"></script>
+<script>
+  if (Auth.isLoggedIn() && Auth.role() === "admin") window.location.href = "index.html";
+
+  document.getElementById("loginForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errorBanner = document.getElementById("errorBanner");
+    const submitBtn = document.getElementById("submitBtn");
+    errorBanner.innerHTML = "";
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Signing in…";
+    try {
+      const session = await Api.post("/auth/login", {
+        identifier: document.getElementById("identifier").value.trim(),
+        password: document.getElementById("password").value,
+        role: "admin",
+      });
+      Auth.save(session);
       window.location.href = "index.html";
+    } catch (err) {
+      errorBanner.innerHTML = errorBlock({ message: err.message || "Those details didn't match." });
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Sign in";
     }
-
-    document.getElementById("loginForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const errorBanner = document.getElementById("errorBanner");
-      const submitBtn = document.getElementById("submitBtn");
-      errorBanner.innerHTML = "";
-      submitBtn.disabled = true;
-      submitBtn.textContent = "Signing in…";
-
-      try {
-        const session = await Api.post("/auth/login", {
-          identifier: document.getElementById("identifier").value.trim(),
-          password: document.getElementById("password").value,
-          role: "admin",
-        });
-        Auth.save(session);
-        window.location.href = "index.html";
-      } catch (err) {
-        errorBanner.innerHTML = `<div class="error-banner">${err.message || "Invalid credentials."}</div>`;
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = "Sign in";
-      }
-    });
-  </script>
+  });
+</script>
 </body>
 </html>

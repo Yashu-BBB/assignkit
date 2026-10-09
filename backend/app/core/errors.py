@@ -73,6 +73,12 @@ class AIUnavailableError(AppError):
     code = "ai_unavailable"
 
 
+class FeatureUnavailableError(AppError):
+    """A feature that is switched off via a FEATURE_* setting."""
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    code = "feature_unavailable"
+
+
 class SandboxError(AppError):
     status_code = status.HTTP_502_BAD_GATEWAY
     code = "code_execution_failed"

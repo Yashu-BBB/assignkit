@@ -66,6 +66,16 @@ app.include_router(analytics.router)
 app.include_router(archive.router)
 
 
+@app.get("/api/features")
+async def features():
+    """Public, read-only. Lets the UI show 'temporarily unavailable' without
+    hardcoding it. The backend still enforces every flag on its own."""
+    return {
+        "pdf_upload": settings.FEATURE_PDF_UPLOAD,
+        "manual_coding": settings.FEATURE_MANUAL_CODING,
+    }
+
+
 @app.get("/api/health")
 async def health():
     return {"status": "ok", "env": settings.ENV}

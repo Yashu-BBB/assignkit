@@ -4,88 +4,102 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Sign in · AssignKit</title>
+<meta name="description" content="AssignKit: class assignments where every student gets their own paper, marked automatically." />
 <link rel="stylesheet" href="shared/css/styles.css" />
 </head>
 <body>
-  <div class="login-shell">
-    <div class="card login-card">
-      <h1 id="formTitle">Student Sign In</h1>
-      <p style="color:var(--ink-soft); margin-top:-8px; margin-bottom:20px; font-size:.9rem;">
-        Sign in to continue.
-      </p>
+<div class="signin">
+  <section class="signin-intro" aria-label="About AssignKit">
+    <div>
+      <a class="wordmark" href="index.html">Assign<span>Kit</span></a>
+    </div>
+    <div>
+      <h1>Set it once. Everyone gets their own paper.</h1>
+      <p>AssignKit is for class assignments. A lecturer writes the questions, the system deals out a different set to each student, and the marking is done by the time the deadline passes.</p>
+      <ul class="facts">
+        <li><b>Different sets, same standard</b>Students sitting next to each other are not looking at the same questions.</li>
+        <li><b>Marked as they go</b>Multiple choice and short answers are graded straight away, with no waiting on anyone.</li>
+        <li><b>Timed on the server</b>Timers and attempts are kept by the server, so refreshing the page doesn't buy anyone extra time.</li>
+      </ul>
+    </div>
+    <div class="foot">AssignKit · class assignment platform</div>
+  </section>
 
-      <div id="errorBanner"></div>
+  <section class="signin-form">
+    <div class="signin-box">
+      <div class="role-tabs" role="tablist" aria-label="Sign in as">
+        <button class="role-tab" role="tab" id="tab-student" aria-selected="true" type="button" data-role="student">Student</button>
+        <button class="role-tab" role="tab" id="tab-lecturer" aria-selected="false" type="button" data-role="lecturer">Lecturer</button>
+      </div>
 
-      <form id="loginForm">
+      <h2 id="formTitle">Student sign in</h2>
+      <div id="errorBanner" aria-live="polite"></div>
+
+      <form id="loginForm" novalidate>
         <div class="field">
-          <label id="idLabel">Register Number</label>
-          <input id="identifier" type="text" autocomplete="username" required />
+          <label for="identifier" id="idLabel">Register number</label>
+          <input id="identifier" type="text" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" required />
         </div>
         <div class="field">
-          <label>Password</label>
+          <label for="password">Password</label>
           <input id="password" type="password" autocomplete="current-password" required />
         </div>
-        <button class="btn" type="submit" style="width:100%; justify-content:center;" id="submitBtn">
-          Sign in
-        </button>
+        <button class="btn block" type="submit" id="submitBtn">Sign in</button>
       </form>
 
-      <p style="text-align:center; margin-top:18px; font-size:.88rem;">
-        <a href="#" id="toggleRoleLink">Sign in as Lecturer instead</a>
-      </p>
-      <p style="text-align:center; margin-top:6px; font-size:.78rem;">
-        <a href="admin/login.html" style="color:var(--ink-soft);">Administrator sign in</a>
-      </p>
+      <p class="small muted" style="margin-top:22px;">Lost your password? Ask your administrator to reset it.</p>
+      <p class="small"><a href="admin/login.html">Administrator sign in</a></p>
     </div>
-  </div>
+  </section>
+</div>
 
-  <script src="shared/js/api.js"></script>
-  <script>
-    let selectedRole = "student";
-    const idLabels = { student: "Register Number", lecturer: "Lecturer ID" };
-    const titles = { student: "Student Sign In", lecturer: "Lecturer Sign In" };
-    const toggleLabels = { student: "Sign in as Lecturer instead", lecturer: "Sign in as Student instead" };
-    const destinations = { student: "student/index.html", lecturer: "lecturer/index.html" };
+<script src="shared/js/api.js"></script>
+<script src="shared/js/ui.js"></script>
+<script>
+  let selectedRole = "student";
+  const text = {
+    student:  { title: "Student sign in",  idLabel: "Register number", dest: "student/index.html" },
+    lecturer: { title: "Lecturer sign in", idLabel: "Lecturer ID",     dest: "lecturer/index.html" },
+  };
 
-    if (Auth.isLoggedIn()) {
-      const dest = Auth.role() === "admin" ? "admin/index.html" : (destinations[Auth.role()] || "student/index.html");
-      window.location.href = dest;
-    }
+  if (Auth.isLoggedIn()) {
+    window.location.href = Auth.role() === "admin" ? "admin/index.html" : (text[Auth.role()] || text.student).dest;
+  }
 
-    document.getElementById("toggleRoleLink").addEventListener("click", (e) => {
-      e.preventDefault();
-      selectedRole = selectedRole === "student" ? "lecturer" : "student";
-      document.getElementById("formTitle").textContent = titles[selectedRole];
-      document.getElementById("idLabel").textContent = idLabels[selectedRole];
-      document.getElementById("toggleRoleLink").textContent = toggleLabels[selectedRole];
+  document.querySelectorAll(".role-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      selectedRole = tab.dataset.role;
+      document.querySelectorAll(".role-tab").forEach(t => t.setAttribute("aria-selected", String(t === tab)));
+      document.getElementById("formTitle").textContent = text[selectedRole].title;
+      document.getElementById("idLabel").textContent = text[selectedRole].idLabel;
       document.getElementById("identifier").value = "";
       document.getElementById("password").value = "";
       document.getElementById("errorBanner").innerHTML = "";
+      document.getElementById("identifier").focus();
     });
+  });
 
-    document.getElementById("loginForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const errorBanner = document.getElementById("errorBanner");
-      const submitBtn = document.getElementById("submitBtn");
-      errorBanner.innerHTML = "";
-      submitBtn.disabled = true;
-      submitBtn.textContent = "Signing in…";
-
-      try {
-        const session = await Api.post("/auth/login", {
-          identifier: document.getElementById("identifier").value.trim(),
-          password: document.getElementById("password").value,
-          role: selectedRole,
-        });
-        Auth.save(session);
-        window.location.href = destinations[selectedRole];
-      } catch (err) {
-        errorBanner.innerHTML = `<div class="error-banner">${err.message || "Invalid credentials."}</div>`;
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = "Sign in";
-      }
-    });
-  </script>
+  document.getElementById("loginForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errorBanner = document.getElementById("errorBanner");
+    const submitBtn = document.getElementById("submitBtn");
+    errorBanner.innerHTML = "";
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Signing in…";
+    try {
+      const session = await Api.post("/auth/login", {
+        identifier: document.getElementById("identifier").value.trim(),
+        password: document.getElementById("password").value,
+        role: selectedRole,
+      });
+      Auth.save(session);
+      window.location.href = text[selectedRole].dest;
+    } catch (err) {
+      errorBanner.innerHTML = errorBlock({ message: err.message || "Those details didn't match. Check them and try again." });
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Sign in";
+    }
+  });
+</script>
 </body>
 </html>

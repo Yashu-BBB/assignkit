@@ -31,7 +31,7 @@ class ManualCodingInput(BaseModel):
 class AssignmentCreate(BaseModel):
     subject_id: str
     title: str
-    mode: Literal["manual", "ai", "hybrid"]
+    mode: Literal["manual", "ai", "hybrid"] = "manual"
 
     total_questions: int
     mcq_count: int = 0

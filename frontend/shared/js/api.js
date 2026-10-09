@@ -91,3 +91,22 @@ const Api = {
   patch: (path, body) => apiRequest("PATCH", path, body),
   del: (path) => apiRequest("DELETE", path),
 };
+
+/**
+ * Feature switches, read from the backend (/api/features). The backend is the
+ * source of truth and enforces them on its own; this only lets the UI show a
+ * clear "temporarily unavailable" state. If the request fails we assume
+ * everything is off, which is the safe direction.
+ */
+const Features = {
+  _data: null,
+  async load() {
+    if (this._data) return this._data;
+    try {
+      this._data = await Api.get("/features");
+    } catch (e) {
+      this._data = { pdf_upload: false, manual_coding: false };
+    }
+    return this._data;
+  },
+};

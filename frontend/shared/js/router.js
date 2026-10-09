@@ -47,7 +47,9 @@ const Router = (() => {
   function highlightNav(hash) {
     document.querySelectorAll(".nav-link[data-route]").forEach((el) => {
       const base = el.dataset.route.split("/:")[0];
-      el.classList.toggle("active", hash === el.dataset.route || hash.startsWith(base));
+      const also = (el.dataset.also || "").split(",").filter(Boolean);
+      el.classList.toggle("active", hash === el.dataset.route || hash.startsWith(base) ||
+        also.some(prefix => hash.startsWith(prefix)));
     });
   }
 

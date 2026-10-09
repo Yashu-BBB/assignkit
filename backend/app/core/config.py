@@ -50,6 +50,12 @@ class Settings(BaseSettings):
     MAX_PDF_SIZE_MB: int = 25
     MIN_OCR_QUALITY_SCORE: float = 0.55
 
+    # --- Feature switches ---
+    # Both are off for now. Flip to true in Railway variables (no code change,
+    # no frontend redeploy) when the features are ready to go live again.
+    FEATURE_PDF_UPLOAD: bool = False        # lecturer class-material PDF upload
+    FEATURE_MANUAL_CODING: bool = False     # lecturers writing coding questions by hand
+
     # --- Rate limiting ---
     RATE_LIMIT_LOGIN_PER_MINUTE: int = 10
 

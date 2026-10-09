@@ -3,43 +3,31 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Student · Class Assignment Platform</title>
+<title>Student · AssignKit</title>
 <link rel="stylesheet" href="../shared/css/styles.css" />
-<style>
-  /* mobile-first: sidebar collapses to a top bar on small screens (handled in shared css) */
-  .exam-shell{ max-width: 760px; }
-  .question-card{ margin-bottom: 20px; }
-  .option-row{
-    display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--line);
-    border-radius: var(--radius); margin-bottom:8px; cursor:pointer;
-  }
-  .option-row:hover{ background: var(--paper-dim); }
-  .option-row.selected{ border-color: var(--accent); background: var(--accent-soft); }
-  textarea.code-editor{
-    width:100%; min-height:220px; font-family: var(--font-mono); font-size:.86rem;
-    background:#1E2430; color:#E8E6DF; border-radius: var(--radius); padding:14px; border:none;
-  }
-</style>
 </head>
 <body>
-<div class="app-shell">
-  <nav class="sidebar" id="sidebar">
-    <div class="brand">Gradebook<small>Student</small></div>
-    <div class="nav-link" data-route="dashboard" onclick="Router.go('dashboard')">My Subjects</div>
-    <div class="nav-crumb">Account</div>
-    <div class="nav-link" onclick="Auth.logout()">Sign out</div>
-  </nav>
-  <main class="main">
-    <div class="topbar">
-      <div id="crumb"></div>
-      <div class="user-pill" id="userPill"></div>
-    </div>
-    <div id="outlet"></div>
-  </main>
-</div>
+<header class="site-header">
+  <div class="bar">
+    <a class="wordmark" href="#">Assign<span>Kit</span></a>
+    <span class="role-tag">Student</span>
+    <button class="menu-btn" id="menuBtn" type="button" aria-expanded="false" aria-controls="mainNav">Menu</button>
+    <nav class="main-nav" id="mainNav" aria-label="Main">
+      <a class="nav-link" data-route="dashboard" data-also="subject/,assignment/" href="#dashboard">My subjects</a>
+      <div class="who-mobile"><span id="userPillMobile"></span><button class="link-btn" type="button" onclick="Auth.logout()">Sign out</button></div>
+    </nav>
+    <div class="who"><span class="name" id="userPill"></span><button class="link-btn" type="button" onclick="Auth.logout()">Sign out</button></div>
+  </div>
+</header>
+<main class="page">
+  <div class="page-head" id="crumb"></div>
+  <div id="outlet"></div>
+</main>
 
 <script src="../shared/js/api.js"></script>
+<script src="../shared/js/ui.js"></script>
 <script src="../shared/js/router.js"></script>
+<script src="../shared/js/shell.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
